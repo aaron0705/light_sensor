@@ -1,17 +1,24 @@
 import serial
 import mysql.connector
 import json
+import datetime
 
 uart = serial.Serial()
+user_id = None
+device_id = None
 
 def main():
     uart_init()
+    print('Start receive')
     while True:
         i = []
         try:
-            i = uart_recevie(i)
-            if i :       
-                print(i)
+            i = uart_recevie()
+            if i:       
+                print(f'Dữ liệu nhận được: {i}')
+                normalize(i)
+                if save_data(i):
+                    print('Lưu thành công')
         except json.JSONDecodeError:
             pass
 
@@ -28,43 +35,51 @@ def uart_init(baudrate = 115200, timeout = 1):
     uart.reset_output_buffer()
     return True 
 
-def uart_transmit(datas):
+def uart_transmit(data):
     if uart.writable():
         uart.write(data.encode())
     else:
         return False
     return True
 
-def uart_recevie(i):
-    if uart.readable():
-        while uart.in_waiting > 0:
-            i = uart.readline()
-            try:
-                i = i.decode().strip()
-                return i
-            except UnicodeDecodeError:
-                print("Lỗi: Nhiễu tín hiệu")
+def uart_recevie():
+    adc_datas = []
+    if uart.readable() and uart.in_waiting > 0:
+        data = uart.read(1)
+        try:
+            adc_datas.append(int(data.decode().strip()))
+            if len(datas) == 8:
+                return adc_datas 
+        except UnicodeDecodeError:
+            pass
 
+def normalize(data):
+    now = datetime.datetime.now()
+    data = {
+        "user_id": user_id,
+        "data": data,
+        "device_id": device_id,
+        "datetime": now
+    }
 
-def save_data(json_mesage):
+def save_data(data):
     cnx = mysql.connector.connect(
     host="127.0.0.1",
     port=3306,
     user="root",
     password="")
     cur = cnx.cursor()
-    # Sử dụng 3 dấu ngoặc kép để tránh lỗi xung đột dấu ngoặc bên trong
+    
     sql_query = """
-        INSERT INTO history (`Date and Time`, `Value`, `Device`, `User`)
+        INSERT INTO history (`Date and Time`, `Data`, `Device_id`, `User_id`)
         VALUES (%s, %s, %s, %s)
     """
 
-    # Gom dữ liệu vào 1 tuple riêng cho dễ nhìn và dễ debug
     data_values = (
-        json_message["datetime"], 
-        json_message["value"], 
-        json_message["device"],   # Đã sửa lỗi chính tả json_mesage
-        json_message["user"]      # User là cột thứ 5
+        data["datetime"], 
+        data["data"], 
+        data["device_id"],   
+        data["user_id"]    
     )
 
     # Thực thi
