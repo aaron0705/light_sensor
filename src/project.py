@@ -13,11 +13,11 @@ def main():
     while True:
         i = []
         try:
-            i = uart_recevie()
+            data = uart_recevie()
             if i:       
-                print(f'Dữ liệu nhận được: {i}')
-                normalize(i)
-                if save_data(i):
+                print(f'Dữ liệu nhận được: {data}')
+                normalized_data = normalize(data)
+                if save_data(normalized_data):
                     print('Lưu thành công')
         except json.JSONDecodeError:
             pass
@@ -61,6 +61,7 @@ def normalize(data):
         "device_id": device_id,
         "datetime": now
     }
+    return data
 
 def save_data(data):
     cnx = mysql.connector.connect(
